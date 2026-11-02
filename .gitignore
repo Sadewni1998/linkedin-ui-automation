@@ -1,0 +1,9 @@
+target/
+test-output/
+screenshots/
+.vscode/
+.project
+.classpath
+.settings/
+*.log
+src/test/resources/credentials.properties
