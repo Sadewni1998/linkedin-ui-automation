@@ -16,12 +16,14 @@ public class SearchPage {
     private final WebDriver driver;
     private final WebDriverWait wait;
 
+    // Locators for LinkedIn global search box
     private final By searchBox = By.cssSelector(
         "input[placeholder*='Search'], " +
         "input[aria-label*='Search'], " +
         ".search-global-typeahead__input"
     );
 
+    // Locators for search result items
     private final By resultCards = By.cssSelector(
         "main a[href*='/in/'], " +
         "main a[href*='/company/'], " +
@@ -34,6 +36,7 @@ public class SearchPage {
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
     }
 
+    // Handles dynamically loaded or re-rendered search box without throwing StaleElementReferenceException
     private WebElement getFreshSearchBox() {
         return wait.until(d -> {
             for (WebElement element : d.findElements(searchBox)) {
@@ -48,6 +51,7 @@ public class SearchPage {
         });
     }
 
+    // Types the search term and executes the search
     public void searchFor(String term) {
         String normalizedTerm = term.trim().replaceAll("\\s+", " ");
         
@@ -91,6 +95,7 @@ public class SearchPage {
 
         System.out.println("Search term submitted: " + term);
 
+        // Wait until navigation to search results URL completes
         wait.until(d -> {
             try {
                 String url = URLDecoder.decode(d.getCurrentUrl(), StandardCharsets.UTF_8).toLowerCase();
@@ -102,6 +107,7 @@ public class SearchPage {
         System.out.println("Search results loaded. Current URL: " + driver.getCurrentUrl());
     }
 
+    // Verifies whether search result cards are visible
     public boolean areResultsDisplayed() {
         return wait.until(d -> {
             for (WebElement result : d.findElements(resultCards)) {
@@ -116,7 +122,13 @@ public class SearchPage {
         });
     }
 
-    // Clicks the first visible person profile result and waits for profile page to render
+    // Returns the value currently entered in the search box
+    public String getEnteredSearchText() {
+        WebElement box = getFreshSearchBox();
+        return box.getAttribute("value");
+    }
+
+    // Clicks the first person profile link (/in/) from search results and waits for profile page to render
     public String clickFirstPeopleResult() {
         By peopleLinks = By.cssSelector("main a[href*='/in/']");
 
@@ -142,11 +154,11 @@ public class SearchPage {
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", profileLink);
         }
 
-        // Wait until navigation to person's profile URL completes
+        // Wait until profile URL is loaded
         wait.until(ExpectedConditions.urlContains("linkedin.com/in/"));
         System.out.println("Opened profile successfully: " + driver.getCurrentUrl());
 
-        // Wait a few seconds so the full profile page with details is clearly visible on screen
+        // Pause to ensure profile elements are visually loaded for screenshots
         try {
             Thread.sleep(5000);
         } catch (InterruptedException ignored) {}
