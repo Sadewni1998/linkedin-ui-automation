@@ -3,9 +3,11 @@ package lk.ac.kdu.sqa.tests;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.Properties;
+import java.util.regex.Pattern;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -32,40 +34,33 @@ public class SearchResultTests extends BaseTest {
         String email = credentials.getProperty("linkedin.email");
         String password = credentials.getProperty("linkedin.password");
 
+        // 1. Login to LinkedIn
         LoginPage loginPage = new LoginPage(driver);
         loginPage.open();
         loginPage.enterEmail(email);
         loginPage.enterPassword(password);
         loginPage.clickSignIn();
 
-        By feedSearchBox = By.cssSelector(
-            "input[placeholder*='Search'], " +
-            "input[aria-label*='Search'], " +
-            "input[role='combobox']"
-        );
-        new WebDriverWait(driver, Duration.ofMinutes(3))
-            .until(d -> {
-                if (!d.getCurrentUrl().contains("/feed")) {
-                    return false;
-                }
-                for (WebElement element : d.findElements(feedSearchBox)) {
-                    try {
-                        if (element.isDisplayed()) {
-                            return true;
-                        }
-                    } catch (StaleElementReferenceException e) {
-                    }
-                }
-                return false;
-            });
+        // 2. Wait until feed page loads
+        new WebDriverWait(driver, Duration.ofSeconds(45))
+            .until(ExpectedConditions.urlContains("/feed"));
 
+        // 3. Search for "software testing"
         SearchPage searchPage = new SearchPage(driver);
         searchPage.searchFor("software testing");
         Assert.assertTrue(searchPage.areResultsDisplayed(), "Search results should be visible.");
 
-        String expectedUrl = searchPage.clickFirstPeopleResult();
-        Assert.assertTrue(expectedUrl.contains("linkedin.com/in/"), "The selected result should be a profile.");
-        Assert.assertTrue(driver.getCurrentUrl().contains("linkedin.com/in/"), "The profile did not open.");
-        System.out.println("SEARCH RESULT TEST PASSED.");
+        // Capture screenshot of search results page
+        captureStepScreenshot("SearchResultsPage");
+
+        // 4. Click the first person profile from the results
+        String profileUrl = searchPage.clickFirstPeopleResult();
+        Assert.assertTrue(profileUrl.contains("linkedin.com/in/"), "Expected a person profile link.");
+        Assert.assertTrue(driver.getCurrentUrl().contains("linkedin.com/in/"), "Profile page did not load.");
+
+        // 5. Capture screenshot of the opened Profile page
+        captureStepScreenshot("ProfilePageOpened");
+
+        System.out.println("SEARCH RESULT TEST PASSED. Profile Opened: " + driver.getCurrentUrl());
     }
 }

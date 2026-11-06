@@ -7,7 +7,6 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.StaleElementReferenceException;
-import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -16,11 +15,13 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 public class SearchPage {
     private final WebDriver driver;
     private final WebDriverWait wait;
+
     private final By searchBox = By.cssSelector(
         "input[placeholder*='Search'], " +
         "input[aria-label*='Search'], " +
         ".search-global-typeahead__input"
     );
+
     private final By resultCards = By.cssSelector(
         "main a[href*='/in/'], " +
         "main a[href*='/company/'], " +
@@ -50,7 +51,6 @@ public class SearchPage {
     public void searchFor(String term) {
         String normalizedTerm = term.trim().replaceAll("\\s+", " ");
         
-        // Wait a brief moment for LinkedIn top navigation to stabilize
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
@@ -63,15 +63,14 @@ public class SearchPage {
                 WebElement box = getFreshSearchBox();
                 try {
                     box.click();
-                } catch (StaleElementReferenceException e) {
-                    box = getFreshSearchBox();
+                } catch (Exception e) {
                     ((JavascriptExecutor) driver).executeScript("arguments[0].click();", box);
                 }
-                
+
                 box.sendKeys(Keys.CONTROL, "a");
                 box.sendKeys(Keys.DELETE);
                 box.sendKeys(normalizedTerm);
-                
+
                 String currentValue = box.getAttribute("value");
                 if (currentValue != null && currentValue.contains(normalizedTerm)) {
                     inputReady = true;
@@ -117,9 +116,10 @@ public class SearchPage {
         });
     }
 
+    // Clicks the first visible person profile result and waits for profile page to render
     public String clickFirstPeopleResult() {
         By peopleLinks = By.cssSelector("main a[href*='/in/']");
-        
+
         WebElement profileLink = wait.until(d -> {
             for (WebElement element : d.findElements(peopleLinks)) {
                 try {
@@ -134,15 +134,23 @@ public class SearchPage {
         });
 
         String expectedUrl = profileLink.getAttribute("href");
+        System.out.println("Clicking on Profile URL: " + expectedUrl);
+
         try {
             profileLink.click();
-        } catch (StaleElementReferenceException e) {
-            // Re-find and click via JS if DOM rerenders
-            WebElement freshLink = wait.until(ExpectedConditions.elementToBeClickable(peopleLinks));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", freshLink);
+        } catch (Exception e) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", profileLink);
         }
 
-        wait.until(d -> d.getCurrentUrl().contains("linkedin.com/in/"));
+        // Wait until navigation to person's profile URL completes
+        wait.until(ExpectedConditions.urlContains("linkedin.com/in/"));
+        System.out.println("Opened profile successfully: " + driver.getCurrentUrl());
+
+        // Wait a few seconds so the full profile page with details is clearly visible on screen
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException ignored) {}
+
         return expectedUrl;
     }
 }
